@@ -61,6 +61,7 @@ class TrackingForegroundService @Inject constructor() : Service(), SensorEventLi
 
     private var stepCounterSensor: Sensor? = null
     private var initialSteps: Int = -1
+    private var currentVehicle: String = "car"
 
     override fun onCreate() {
         super.onCreate()
@@ -89,7 +90,7 @@ class TrackingForegroundService @Inject constructor() : Service(), SensorEventLi
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         when (intent?.action) {
-            ACTION_START -> startTracking()
+            ACTION_START -> startTracking(intent.getStringExtra(EXTRA_VEHICLE) ?: "car")
             ACTION_STOP -> stopTrackingAndNavToSummary()
         }
 
@@ -98,11 +99,12 @@ class TrackingForegroundService @Inject constructor() : Service(), SensorEventLi
 
     @SuppressLint("ForegroundServiceType")
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    private fun startTracking() {
+    private fun startTracking(vehicle: String) {
         startMillis = System.currentTimeMillis()
+        currentVehicle = vehicle
 
         // Set the service as running in the repository
-        trackingRepository.startTracking()
+        trackingRepository.startTracking(vehicle)
 
         val initialNotification = buildNotification()
         startForeground(NOTIFICATION_ID, initialNotification)// Start service as foreground
@@ -165,6 +167,7 @@ class TrackingForegroundService @Inject constructor() : Service(), SensorEventLi
             averageSpeedKmh = averageSpeedKmh,
             durationSeconds = elapsedTimeSeconds,
             startTimeMillis = startMillis,
+            vehicle = currentVehicle,
             points = finalTrackingState.pathPoints
         )
 
@@ -282,8 +285,8 @@ class TrackingForegroundService @Inject constructor() : Service(), SensorEventLi
             PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE)
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Path Tracker")
-            .setContentText("Tracking in progress")
+            .setContentTitle("Prop 22 Tracker")
+            .setContentText("Tracking your delivery — GPS is on")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -325,6 +328,7 @@ class TrackingForegroundService @Inject constructor() : Service(), SensorEventLi
         const val ACTION_START = "action_start_tracking"
         const val ACTION_STOP = "action_stop_tracking"
         const val ACTION_SHOW_SUMMARY = "action_show_summary"
+        const val EXTRA_VEHICLE = "extra_vehicle"
         const val EXTRA_TRACKING_SUMMARY = "extra_tracking_summary"
         const val NOTIFICATION_ID = 4242
     }

@@ -34,6 +34,9 @@ class TrackingSessionRepositoryImpl @Inject constructor(
             distanceMeters = session.distanceMeters,
             averageSpeedKmh = session.averageSpeedKmh,
             steps = session.steps,
+            vehicle = session.vehicle,
+            basePay = session.basePay,
+            tips = session.tips,
         )
 
         val pointEntities = session.points.map { point ->

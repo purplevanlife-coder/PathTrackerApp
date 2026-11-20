@@ -45,8 +45,15 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
 import coil3.compose.AsyncImage
+import com.example.pathtrackerapp.BuildConfig
 import com.example.pathtrackerapp.R
+import com.example.pathtrackerapp.domain.Prop22Calculator
+import com.example.pathtrackerapp.domain.Vehicle
+import com.example.pathtrackerapp.domain.model.TrackingSession
 import com.example.pathtrackerapp.ui.utils.buildStaticMapUrl
 import com.example.pathtrackerapp.ui.utils.formatToTimeString
 
@@ -80,14 +87,20 @@ fun TrackingSummaryScreen(
                 onTitleChange = viewModel::onTitleChange,
                 urlImage = buildStaticMapUrl(uiState.session.points),
                 duration = formatToTimeString(uiState.session.durationSeconds),
-                distance = if (uiState.session.distanceMeters >= 1000) {
-                    "%.2f".format(uiState.session.distanceMeters / 1000)
-                } else {
-                    "${uiState.session.distanceMeters.toInt()}"
-                },
-                distanceUnit = if (uiState.session.distanceMeters >= 1000) "KM" else "M",
-                pace = "%.2f".format(uiState.session.averageSpeedKmh),
-                steps = uiState.session.steps.toString(),
+                distance = "%.2f".format(uiState.session.distanceMeters / 1609.344),
+                distanceUnit = "MI",
+                pace = "%.1f".format(uiState.session.averageSpeedKmh / 1.609344),
+                steps = if (uiState.session.vehicle == "ebike") "E-bike" else "Car",
+            )
+        }
+
+        item("pay") {
+            PaySection(
+                basePayText = uiState.basePayText,
+                tipsText = uiState.tipsText,
+                onBasePayChange = viewModel::onBasePayChange,
+                onTipsChange = viewModel::onTipsChange,
+                session = uiState.session
             )
         }
 
@@ -185,6 +198,7 @@ private fun CardSummary(
             }
         )
 
+        if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
         AsyncImage(
             model = urlImage,
             contentDescription = "Static map image",
@@ -197,6 +211,7 @@ private fun CardSummary(
                     shape = MaterialTheme.shapes.small
                 ),
         )
+        }
 
         Row(
             modifier = Modifier
@@ -225,14 +240,14 @@ private fun CardSummary(
                 icon = painterResource(R.drawable.ic_speed),
                 title = stringResource(R.string.pace),
                 value = pace,
-                unit = "KM/H"
+                unit = "MPH"
 
             )
 
             StatColumn(
                 modifier = Modifier.weight(1f),
                 icon = painterResource(R.drawable.ic_steps),
-                title = stringResource(R.string.steps),
+                title = "Vehicle",
                 value = steps
             )
         }
@@ -389,6 +404,71 @@ fun TitleNeededDialog(
                     Text(text = stringResource(R.string.accept))
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun PaySection(
+    basePayText: String,
+    tipsText: String,
+    onBasePayChange: (String) -> Unit,
+    onTipsChange: (String) -> Unit,
+    session: TrackingSession
+) {
+    val vehicle = Vehicle.fromKey(session.vehicle)
+    val guarantee = Prop22Calculator.guarantee(session.durationSeconds, session.distanceMeters, vehicle)
+    val topUp = Prop22Calculator.topUp(guarantee, session.basePay)
+    val expected = Prop22Calculator.expectedTotal(session.basePay, session.tips, topUp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surface,
+                shape = MaterialTheme.shapes.large
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Prop 22 pay",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        OutlinedTextField(
+            value = basePayText,
+            onValueChange = onBasePayChange,
+            label = { Text("Base pay ($)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = tipsText,
+            onValueChange = onTipsChange,
+            label = { Text("Tips ($)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Text(
+            text = "Guarantee: $%.2f".format(guarantee),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "Expected top-up: $%.2f".format(topUp),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "Expected total: $%.2f".format(expected),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

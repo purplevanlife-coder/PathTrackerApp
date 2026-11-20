@@ -52,6 +52,14 @@ class TrackingViewModel @Inject constructor(
     val trackingState = trackingRepository.trackingState
     val isServiceTrackingRunning = trackingRepository.isServiceTrackingRunning
 
+    // Vehicle chosen for the next delivery: "car" counts time + miles, "ebike" time only
+    private val _selectedVehicle = MutableStateFlow("car")
+    val selectedVehicle = _selectedVehicle.asStateFlow()
+
+    fun onVehicleChange(vehicle: String) {
+        _selectedVehicle.update { vehicle }
+    }
+
     private val _permissionState = MutableStateFlow(
         Pair(
             permissionHandler.isPermissionGranted(AppPermission.LOCATION_FOREGROUND),
@@ -183,6 +191,7 @@ class TrackingViewModel @Inject constructor(
     private fun startTrackingService() {
         val intent = Intent(context, TrackingForegroundService::class.java).apply {
             action = TrackingForegroundService.ACTION_START
+            putExtra(TrackingForegroundService.EXTRA_VEHICLE, _selectedVehicle.value)
         }
 
         context.startForegroundService(intent)

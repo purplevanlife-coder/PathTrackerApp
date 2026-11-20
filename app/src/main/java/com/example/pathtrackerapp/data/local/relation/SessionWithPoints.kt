@@ -28,6 +28,9 @@ data class SessionWithPoints(
             distanceMeters = session.distanceMeters,
             averageSpeedKmh = session.averageSpeedKmh,
             steps = session.steps,
+            vehicle = session.vehicle,
+            basePay = session.basePay,
+            tips = session.tips,
             points = points.map { point ->
                 SessionPoint(
                     latitude = point.latitude,

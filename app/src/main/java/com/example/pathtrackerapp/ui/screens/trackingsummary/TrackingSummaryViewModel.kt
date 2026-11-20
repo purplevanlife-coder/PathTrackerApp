@@ -17,7 +17,9 @@ import javax.inject.Inject
 
 data class TitleTrackingUiState(
     val session: TrackingSession,
-    val isTitleEmpty: Boolean = false
+    val isTitleEmpty: Boolean = false,
+    val basePayText: String = "",
+    val tipsText: String = ""
 )
 
 @HiltViewModel
@@ -42,6 +44,26 @@ class TrackingSummaryViewModel @Inject constructor(
         }
     }
 
+    fun onBasePayChange(text: String) {
+        val clean = text.filter { it.isDigit() || it == '.' }
+        _uiState.update {
+            it.copy(
+                basePayText = clean,
+                session = it.session.copy(basePay = clean.toDoubleOrNull() ?: 0.0)
+            )
+        }
+    }
+
+    fun onTipsChange(text: String) {
+        val clean = text.filter { it.isDigit() || it == '.' }
+        _uiState.update {
+            it.copy(
+                tipsText = clean,
+                session = it.session.copy(tips = clean.toDoubleOrNull() ?: 0.0)
+            )
+        }
+    }
+
     fun onNeededTitleDialogDismiss() {
         _uiState.update { it.copy(isTitleEmpty = false) }
     }
@@ -49,13 +71,15 @@ class TrackingSummaryViewModel @Inject constructor(
     fun onSaveClick(navToLog: () -> Unit) {
         val currentTitle = _uiState.value.session.title
 
-        if (currentTitle.isBlank()) {
-            _uiState.update { it.copy(isTitleEmpty = true) }
-            return
+        // No friction mid-dash: a blank title just gets a sensible default
+        val sessionToSave = if (currentTitle.isBlank()) {
+            _uiState.value.session.copy(title = "DoorDash delivery")
+        } else {
+            _uiState.value.session
         }
 
         viewModelScope.launch {
-            sessionRepository.insertSession(_uiState.value.session)
+            sessionRepository.insertSession(sessionToSave)
         }
 
         navToLog()

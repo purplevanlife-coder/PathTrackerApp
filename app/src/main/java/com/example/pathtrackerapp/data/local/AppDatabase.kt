@@ -8,7 +8,7 @@ import com.example.pathtrackerapp.data.local.entity.SessionEntity
 
 @Database(
     entities = [SessionEntity::class, LocationPointEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

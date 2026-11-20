@@ -46,7 +46,10 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.example.pathtrackerapp.BuildConfig
 import com.example.pathtrackerapp.R
+import com.example.pathtrackerapp.domain.Prop22Calculator
+import com.example.pathtrackerapp.domain.Vehicle
 import com.example.pathtrackerapp.ui.utils.formatToTimeString
 import com.google.android.gms.maps.model.JointType
 import com.google.maps.android.compose.MapUiSettings
@@ -58,6 +61,7 @@ fun TrackingScreen(modifier: Modifier = Modifier, viewModel: TrackingViewModel =
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val trackingState by viewModel.trackingState.collectAsStateWithLifecycle()
     val isServiceTrackingRunning by viewModel.isServiceTrackingRunning.collectAsStateWithLifecycle()
+    val selectedVehicle by viewModel.selectedVehicle.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
 
@@ -131,6 +135,7 @@ fun TrackingScreen(modifier: Modifier = Modifier, viewModel: TrackingViewModel =
 
     Column(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
+            if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
             GoogleMap(
                 properties = MapProperties(
                     isMyLocationEnabled = uiState.hasLocationPermission
@@ -154,6 +159,19 @@ fun TrackingScreen(modifier: Modifier = Modifier, viewModel: TrackingViewModel =
                         width = 24f,
                         geodesic = true,
                         jointType = JointType.ROUND
+                    )
+                }
+            }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "GPS tracking is on — live stats are below",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -210,14 +228,20 @@ fun TrackingScreen(modifier: Modifier = Modifier, viewModel: TrackingViewModel =
             }
         }
 
+        if (!isServiceTrackingRunning) {
+            VehicleSelector(
+                selected = selectedVehicle,
+                onSelect = viewModel::onVehicleChange
+            )
+        }
+
         AnimatedVisibility(
             visible = isServiceTrackingRunning
         ) {
             Stats(
                 timeSeconds = trackingState.elapsedTimeSeconds,
                 distanceMeters = trackingState.distanceMeters,
-                speedKmh = trackingState.currentSpeedKmh,
-                steps = trackingState.steps
+                vehicle = Vehicle.fromKey(trackingState.vehicle)
             )
         }
     }
@@ -276,15 +300,12 @@ private fun LocationDisableBanner(onBannerClick: () -> Unit = {}) {
 private fun Stats(
     timeSeconds: Long,
     distanceMeters: Double,
-    speedKmh: Float,
-    steps: Int
+    vehicle: Vehicle
 ) {
 
-    val distanceText = if (distanceMeters >= 1000) {
-        "${"%.2f".format(distanceMeters / 1000)} km"
-    } else {
-        "${distanceMeters.toInt()} m"
-    }
+    val miles = Prop22Calculator.miles(distanceMeters)
+    val avgMph = Prop22Calculator.averageSpeedMph(distanceMeters, timeSeconds)
+    val guarantee = Prop22Calculator.guarantee(timeSeconds, distanceMeters, vehicle)
 
     Column {
         Row(
@@ -302,25 +323,57 @@ private fun Stats(
             )
             StatColumn(
                 modifier = Modifier.weight(1f),
-                title = stringResource(R.string.distance),
-                value = distanceText
+                title = "Miles",
+                value = "%.2f".format(miles)
             )
             StatColumn(
                 modifier = Modifier.weight(1f),
-                title = stringResource(R.string.speed),
-                value = "${"%.2f".format(speedKmh)} km/h"
+                title = "Avg speed",
+                value = "%.1f mph".format(avgMph)
             )
 
             StatColumn(
                 modifier = Modifier.weight(1f),
-                title = stringResource(R.string.steps),
-                value = steps.toString()
+                title = "Guarantee",
+                value = "$%.2f".format(guarantee)
             )
         }
         HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.outline
         )
+    }
+}
+
+@Composable
+private fun VehicleSelector(selected: String, onSelect: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Button(
+            modifier = Modifier.weight(1f),
+            onClick = { onSelect("car") },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (selected == "car") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (selected == "car") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        ) {
+            Text("Car · time + miles")
+        }
+        Button(
+            modifier = Modifier.weight(1f),
+            onClick = { onSelect("ebike") },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (selected == "ebike") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (selected == "ebike") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        ) {
+            Text("E-bike · time only")
+        }
     }
 }
 

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.example.pathtrackerapp.BuildConfig
 import com.example.pathtrackerapp.R
 import com.example.pathtrackerapp.domain.model.TrackingSession
 import com.example.pathtrackerapp.ui.utils.buildStaticMapUrl
@@ -145,11 +146,7 @@ private fun SessionsList(sessions: List<TrackingSession>) {
 @Composable
 private fun SessionCard(session: TrackingSession) {
 
-    val (distanceText, distanceUnit) = if (session.distanceMeters >= 1000) {
-        ("%.2f".format(session.distanceMeters / 1000) to "KM")
-    } else {
-        ("${session.distanceMeters.toInt()}" to "M")
-    }
+    val (distanceText, distanceUnit) = ("%.2f".format(session.distanceMeters / 1609.344) to "MI")
 
     Column(
         modifier = Modifier
@@ -206,21 +203,22 @@ private fun SessionCard(session: TrackingSession) {
                 modifier = Modifier.weight(1f),
                 icon = painterResource(R.drawable.ic_speed),
                 title = stringResource(R.string.pace),
-                value = "%.2f".format(session.averageSpeedKmh),
-                unit = "KM/H"
+                value = "%.1f".format(session.averageSpeedKmh / 1.609344),
+                unit = "MPH"
 
             )
 
             StatColumn(
                 modifier = Modifier.weight(1f),
                 icon = painterResource(R.drawable.ic_steps),
-                title = stringResource(R.string.steps),
-                value = session.steps.toString()
+                title = "Vehicle",
+                value = if (session.vehicle == "ebike") "E-bike" else "Car"
             )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        if (BuildConfig.MAPS_API_KEY.isNotBlank()) {
         AsyncImage(
             model = buildStaticMapUrl(points = session.points, width = 600, height = 600),
             contentDescription = null,
@@ -233,6 +231,7 @@ private fun SessionCard(session: TrackingSession) {
                     shape = MaterialTheme.shapes.extraSmall
                 )
         )
+        }
 
     }
 }

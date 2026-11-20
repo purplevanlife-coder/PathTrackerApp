@@ -13,6 +13,7 @@ data class TrackingState(
     val distanceMeters: Double = 0.0,
     val currentSpeedKmh: Float = 0f,
     val steps: Int = 0,
+    val vehicle: String = "car",
     val pathPoints: List<SessionPoint> = emptyList()
 )
 
@@ -27,9 +28,9 @@ class TrackingRepository @Inject constructor() {
     private val _trackingState = MutableStateFlow(TrackingState())
     val trackingState = _trackingState.asStateFlow()
 
-    fun startTracking() {
-        // When start, reset the state and set service running to true
-        _trackingState.update { TrackingState() }
+    fun startTracking(vehicle: String = "car") {
+        // When start, reset the state (keeping the chosen vehicle) and set service running to true
+        _trackingState.update { TrackingState(vehicle = vehicle) }
         _isServiceTrackingRunning.update { true }
     }
 
